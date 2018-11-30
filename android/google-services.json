@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "100413699507",
+    "firebase_url": "https://ventive-crm-105e9.firebaseio.com",
+    "project_id": "ventive-crm-105e9",
+    "storage_bucket": "ventive-crm-105e9.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:100413699507:android:59c8a5cf5b0f6277",
+        "android_client_info": {
+          "package_name": "com.ventive.crm"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "100413699507-mj7moiahuomud3quqrg333p6b6p1r33g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgBkQta6htmPjbPNJgkt93x5DvFJshVNQ"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
