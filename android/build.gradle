@@ -6,6 +6,7 @@ buildscript {
 
     dependencies {
         classpath 'com.android.tools.build:gradle:2.3.1'
+        classpath 'com.google.gms:google-services:4.0.1'
     }
 }
 
@@ -31,6 +32,8 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.facebook.react:react-native:+'
+    compile 'com.facebook.react:react-native:+'
+    compile 'com.google.firebase:firebase-core:16.0.1'
 }
-  
+
+apply plugin: 'com.google.gms.google-services'
