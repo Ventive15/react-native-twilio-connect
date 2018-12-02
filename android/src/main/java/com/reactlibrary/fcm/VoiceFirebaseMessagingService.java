@@ -20,9 +20,9 @@ import com.twilio.voice.CallInvite;
 import com.twilio.voice.MessageException;
 import com.twilio.voice.MessageListener;
 import com.twilio.voice.Voice;
-import com.twilio.voice.reactlibrary.R;
-import com.twilio.voice.reactlibrary.SoundPoolManager;
-import com.twilio.voice.reactlibrary.RNTwilioModule;
+import com.reactlibrary.R;
+import com.reactlibrary.SoundPoolManager;
+import com.reactlibrary.RNTwilioModule;
 
 import java.util.Map;
 
@@ -48,12 +48,12 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
      */
     @Override
     public void onMessageReceived(RemoteMessage remoteMessage) {
-        Log.d(TAG, "Received onMessageReceived()");
-        Log.d(TAG, "Bundle data: " + remoteMessage.getData());
-        Log.d(TAG, "From: " + remoteMessage.getFrom());
+        //Log.d(TAG, "Received onMessageReceived()");
+        //Log.d(TAG, "Bundle data: " + remoteMessage.getData());
+        //Log.d(TAG, "From: " + remoteMessage.getFrom());
 
         // Check if message contains a data payload.
-        if (remoteMessage.getData().size() > 0) {
+        /*if (remoteMessage.getData().size() > 0) {
             Map<String, String> data = remoteMessage.getData();
             final int notificationId = (int) System.currentTimeMillis();
             Voice.handleMessage(this, data, new MessageListener() {
@@ -68,7 +68,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
                     Log.e(TAG, messageException.getLocalizedMessage());
                 }
             });
-        }
+        }*/
     }
 
     private void notify(CallInvite callInvite, int notificationId) {
@@ -81,8 +81,7 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
             intent.putExtra(RNTwilioModule.INCOMING_CALL_NOTIFICATION_ID, notificationId);
             intent.putExtra(RNTwilioModule.INCOMING_CALL_INVITE, callInvite);
             intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            PendingIntent pendingIntent =
-                    PendingIntent.getActivity(this, notificationId, intent, PendingIntent.FLAG_ONE_SHOT);
+//            PendingIntent pendingIntent = PendingIntent.getActivity(this, notificationId, intent, PendingIntent.FLAG_ONE_SHOT);
             /*
              * Pass the notification id and call sid to use as an identifier to cancel the
              * notification later
@@ -98,24 +97,24 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
                 callInviteChannel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
                 notificationManager.createNotificationChannel(callInviteChannel);
 
-                notification = buildNotification(callInvite.getFrom() + " is calling.", pendingIntent, extras);
+                //notification = buildNotification(callInvite.getFrom() + " is calling.", pendingIntent, extras);
                 notificationManager.notify(notificationId, notification);
             } else {
-                NotificationCompat.Builder notificationBuilder =
-                        new NotificationCompat.Builder(this)
-                                .setSmallIcon(R.drawable.ic_call_end_white_24dp)
-                                .setContentTitle(getString(R.string.app_name))
-                                .setContentText(callInvite.getFrom() + " is calling.")
-                                .setAutoCancel(true)
-                                .setExtras(extras)
-                                .setContentIntent(pendingIntent)
-                                .setGroup("test_app_notification")
-                                .setColor(Color.rgb(214, 10, 37));
-
-                notificationManager.notify(notificationId, notificationBuilder.build());
+//                NotificationCompat.Builder notificationBuilder =
+//                        new NotificationCompat.Builder(this)
+//                                .setSmallIcon(R.drawable.ic_call_end_white_24dp)
+//                                .setContentTitle(getString(R.string.app_name))
+//                                .setContentText(callInvite.getFrom() + " is calling.")
+//                                .setAutoCancel(true)
+//                                .setExtras(extras)
+//                                .setContentIntent(pendingIntent)
+//                                .setGroup("test_app_notification")
+//                                .setColor(Color.rgb(214, 10, 37));
+//
+//                notificationManager.notify(notificationId, notificationBuilder.build());
             }
         } else {
-            SoundPoolManager.getInstance(this).stopRinging();
+//            SoundPoolManager.getInstance(this).stopRinging();
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                 /*
                  * If the incoming call was cancelled then remove the notification by matching
@@ -159,26 +158,8 @@ public class VoiceFirebaseMessagingService extends FirebaseMessagingService {
         intent.putExtra(RNTwilioModule.INCOMING_CALL_INVITE, callInvite);
         intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        this.startActivity(intent);
+        //this.startActivity(intent);
     }
 
-    /**
-     * Build a notification.
-     *
-     * @param text          the text of the notification
-     * @param pendingIntent the body, pending intent for the notification
-     * @param extras        extras passed with the notification
-     * @return the builder
-     */
-    @TargetApi(Build.VERSION_CODES.O)
-    public Notification buildNotification(String text, PendingIntent pendingIntent, Bundle extras) {
-        return new Notification.Builder(getApplicationContext(), VOICE_CHANNEL)
-                .setSmallIcon(R.drawable.ic_call_end_white_24dp)
-                .setContentTitle(getString(R.string.app_name))
-                .setContentText(text)
-                .setContentIntent(pendingIntent)
-                .setExtras(extras)
-                .setAutoCancel(true)
-                .build();
-    }
+
 }

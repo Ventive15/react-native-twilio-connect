@@ -3,11 +3,18 @@ package com.reactlibrary;
 
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
-import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableType;
+import com.facebook.react.bridge.ReadableMapKeySetIterator;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 
+import android.support.annotation.Nullable;
+import android.support.annotation.NonNull;
 import android.Manifest;
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
@@ -23,9 +30,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.annotation.NonNull;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
@@ -41,7 +45,9 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Chronometer;
 import android.widget.EditText;
-
+import android.support.design.widget.CoordinatorLayout;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.koushikdutta.async.future.FutureCallback;
 import com.koushikdutta.ion.Ion;
@@ -51,12 +57,22 @@ import com.twilio.voice.CallInvite;
 import com.twilio.voice.RegistrationException;
 import com.twilio.voice.RegistrationListener;
 import com.twilio.voice.Voice;
-
+import java.lang.annotation.Annotation;
 import java.util.HashMap;
 
-public class RNTwilioModule extends ReactContextBaseJavaModule {
+import java.net.URL;
+import java.net.URLConnection;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.util.HashMap;
+import java.util.Map;
+
+public class RNTwilioModule extends ReactContextBaseJavaModule{
 
   private final ReactApplicationContext reactContext;
+  private String eventName;
+  private WritableMap params;
 
 
   private static final int MIC_PERMISSION_REQUEST_CODE = 1;
@@ -119,7 +135,7 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
   static String kCallStateCancelled = "cancelled";
   static String kRnPushToken = "RnPushToken";
 
-  private static final String TAG = TwilioModule.class.getName();
+  private static final String TAG = "TwilioModule";
 
   public RNTwilioModule(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -134,29 +150,71 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void call(String eventName, ReadableMap twiMLParams){
-    activeCall = Voice.call(RNTwilioModule.this, accessToken, twiMLParams, callListener);
+    activeCall = Voice.call(getReactApplicationContext(), accessToken, convertToNativeMap(twiMLParams), callListener);
   }
 
   @ReactMethod
   public void disconnectCall(){
-    disconnect()
+    disconnect();
   }
 
   //Method for Android function of twilio
 
-  private void sendEvent(ReactContext reactContext,
-                         String eventName,
-                         @Nullable WritableMap params) {
-    reactContext
-            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-            .emit(eventName, params);
+  private Map<String, String> convertToNativeMap(ReadableMap readableMap) {
+    Map<String, String> hashMap = new HashMap<String, String>();
+    ReadableMapKeySetIterator iterator = readableMap.keySetIterator();
+    while (iterator.hasNextKey()) {
+      String key = iterator.nextKey();
+      ReadableType readableType = readableMap.getType(key);
+      switch (readableType) {
+        case String:
+          hashMap.put(key, readableMap.getString(key));
+          break;
+        default:
+          throw new IllegalArgumentException("Could not convert object with key: " + key + ".");
+      }
+    }
+    return hashMap;
   }
 
-  @Override
-  protected void onNewIntent(Intent intent) {
-    super.onNewIntent(intent);
-    handleIncomingCallIntent(intent);
+
+  private void sendEvent(String eventName, @Nullable WritableMap params) {
+    Log.d(TAG, ">>> sendEvent: start sending event (" + eventName + ")");
+    if (params != null) {
+      Log.d(TAG, ">>> sendEvent: params: " + params.toString() + ")");
+    }
+    DeviceEventManagerModule.RCTDeviceEventEmitter deviceEE = getReactApplicationContext()
+            .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class);
+    Log.d(TAG, ">>> sendEvent: after creating device event emitter (" + eventName + ")");
+    deviceEE.emit(eventName, params);
+    Log.d(TAG, ">>> sendEvent: after emitting event (" + eventName + ")");
   }
+
+  public void onReceive(Context context, Intent intent) {
+    Log.d(TAG, "onReceive");
+//    Device device = intent.getParcelableExtra(Device.EXTRA_DEVICE);
+//    Connection incomingConnection = intent.getParcelableExtra(Device.EXTRA_CONNECTION);
+//
+//    if (incomingConnection == null && device == null) {
+//      return;
+//    }
+//    intent.removeExtra(Device.EXTRA_DEVICE);
+//    intent.removeExtra(Device.EXTRA_CONNECTION);
+//
+//    _pendingConnection = incomingConnection;
+//
+//    Map<String, String> connParams = _pendingConnection.getParameters();
+//    WritableMap params = Arguments.createMap();
+//    if (connParams != null) {
+//      for (Map.Entry<String, String> entry : connParams.entrySet()) {
+//        params.putString(entry.getKey(), entry.getValue());
+//      }
+//    }
+//    sendEvent("deviceDidReceiveIncoming", params);
+  }
+
+
+
 
   private RegistrationListener registrationListener() {
     return new RegistrationListener() {
@@ -182,8 +240,6 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
         Log.d(TAG, "Connect failure");
         String message = String.format("Call Error: %d, %s", error.getErrorCode(), error.getMessage());
         Log.e(TAG, message);
-        Snackbar.make(coordinatorLayout, message, SNACKBAR_DURATION).show();
-        resetUI();
       }
 
       @Override
@@ -202,29 +258,23 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
           Log.e(TAG, message);
           Snackbar.make(coordinatorLayout, message, SNACKBAR_DURATION).show();
         }
-        resetUI();
+
       }
     };
   }
 
 
-  @Override
   protected void onResume() {
-    super.onResume();
     registerReceiver();
   }
 
-  @Override
   protected void onPause() {
-    super.onPause();
     unregisterReceiver();
   }
 
-  @Override
-  public void onDestroy() {
-    soundPoolManager.release();
-    super.onDestroy();
-  }
+//  public void onDestroy() {
+//    soundPoolManager.release();
+//  }
 
   private void handleIncomingCallIntent(Intent intent) {
     if (intent != null && intent.getAction() != null) {
@@ -232,11 +282,6 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
         activeCallInvite = intent.getParcelableExtra(INCOMING_CALL_INVITE);
         if (activeCallInvite != null && (activeCallInvite.getState() == CallInvite.State.PENDING)) {
           soundPoolManager.playRinging();
-          alertDialog = createIncomingCallDialog(RNTwilioModule.this,
-                  activeCallInvite,
-                  answerCallClickListener(),
-                  cancelCallClickListener());
-          alertDialog.show();
           activeCallNotificationId = intent.getIntExtra(INCOMING_CALL_NOTIFICATION_ID, 0);
         } else {
           if (alertDialog != null && alertDialog.isShowing()) {
@@ -245,7 +290,7 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
           }
         }
       } else if (intent.getAction().equals(ACTION_FCM_TOKEN)) {
-        retrieveAccessToken();
+        //retrieveAccessToken();
       }
     }
   }
@@ -257,7 +302,7 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
       IntentFilter intentFilter = new IntentFilter();
       intentFilter.addAction(ACTION_INCOMING_CALL);
       intentFilter.addAction(ACTION_FCM_TOKEN);
-      LocalBroadcastManager.getInstance(this).registerReceiver(
+      LocalBroadcastManager.getInstance(getReactApplicationContext()).registerReceiver(
               voiceBroadcastReceiver, intentFilter);
       isReceiverRegistered = true;
     }
@@ -265,7 +310,7 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
 
   private void unregisterReceiver() {
     if (isReceiverRegistered) {
-      LocalBroadcastManager.getInstance(this).unregisterReceiver(voiceBroadcastReceiver);
+      LocalBroadcastManager.getInstance(getReactApplicationContext()).unregisterReceiver(voiceBroadcastReceiver);
       isReceiverRegistered = false;
     }
   }
@@ -299,7 +344,7 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
     final String fcmToken = FirebaseInstanceId.getInstance().getToken();
     if (fcmToken != null) {
       Log.i(TAG, "Registering with FCM");
-      Voice.register(this, accessToken, Voice.RegistrationChannel.FCM, fcmToken, registrationListener);
+      Voice.register(getReactApplicationContext(), accessToken, Voice.RegistrationChannel.FCM, fcmToken, registrationListener);
     }
   }
 
@@ -307,8 +352,8 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
     return new View.OnClickListener() {
       @Override
       public void onClick(View v) {
-        alertDialog = createCallDialog(callClickListener(), cancelCallClickListener(), VoiceActivity.this);
-        alertDialog.show();
+//        alertDialog = createCallDialog(callClickListener(), cancelCallClickListener(), VoiceActivity.this);
+//        alertDialog.show();
       }
     };
   }
@@ -318,7 +363,7 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
       @Override
       public void onClick(View v) {
         soundPoolManager.playDisconnect();
-        resetUI();
+//        resetUI();
         disconnect();
       }
     };
@@ -337,7 +382,7 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
    * Accept an incoming Call
    */
   private void answer() {
-    activeCallInvite.accept(this, callListener);
+    activeCallInvite.accept(getReactApplicationContext(), callListener);
     notificationManager.cancel(activeCallNotificationId);
   }
 
@@ -356,9 +401,9 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
       boolean mute = !activeCall.isMuted();
       activeCall.mute(mute);
       if (mute) {
-        muteActionFab.setImageDrawable(ContextCompat.getDrawable(VoiceActivity.this, R.drawable.ic_mic_white_off_24dp));
+        //Notify Mute
       } else {
-        muteActionFab.setImageDrawable(ContextCompat.getDrawable(VoiceActivity.this, R.drawable.ic_mic_white_24dp));
+        //Notify Unmute
       }
     }
   }
@@ -402,35 +447,32 @@ public class RNTwilioModule extends ReactContextBaseJavaModule {
   }
 
   private boolean checkPermissionForMicrophone() {
-    int resultMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO);
+    int resultMic = ContextCompat.checkSelfPermission(getReactApplicationContext(), Manifest.permission.RECORD_AUDIO);
     return resultMic == PackageManager.PERMISSION_GRANTED;
   }
 
   private void requestPermissionForMicrophone() {
-    if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.RECORD_AUDIO)) {
-      Snackbar.make(coordinatorLayout,
-              "Microphone permissions needed. Please allow in your application settings.",
-              SNACKBAR_DURATION).show();
-    } else {
-      ActivityCompat.requestPermissions(
-              this,
-              new String[]{Manifest.permission.RECORD_AUDIO},
-              MIC_PERMISSION_REQUEST_CODE);
-    }
+//    if (ActivityCompat.shouldShowRequestPermissionRationale(getReactApplicationContext(), Manifest.permission.RECORD_AUDIO)) {
+//      Snackbar.make(coordinatorLayout,
+//              "Microphone permissions needed. Please allow in your application settings.",
+//              SNACKBAR_DURATION).show();
+//    } else {
+//      ActivityCompat.requestPermissions(
+//              getReactApplicationActivity(),
+//              new String[]{Manifest.permission.RECORD_AUDIO},
+//              MIC_PERMISSION_REQUEST_CODE);
+//    }
   }
 
-  @Override
   public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
     /*
      * Check if microphone permissions is granted
      */
     if (requestCode == MIC_PERMISSION_REQUEST_CODE && permissions.length > 0) {
       if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-        Snackbar.make(coordinatorLayout,
-                "Microphone permissions needed. Please allow in your application settings.",
-                SNACKBAR_DURATION).show();
+        //Permission denied //TODO
       } else {
-        retrieveAccessToken();
+       // retrieveAccessToken();
       }
     }
   }

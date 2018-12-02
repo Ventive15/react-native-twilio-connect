@@ -1,0 +1,2 @@
+# Twilio Client
+-keep class com.twilio.** { *; }
