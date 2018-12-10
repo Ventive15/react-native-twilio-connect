@@ -149,7 +149,7 @@ public class RNTwilioModule extends ReactContextBaseJavaModule{
   //Bridging methods
 
   @ReactMethod
-  public void call(String eventName, ReadableMap twiMLParams){
+  public void call(String accessToken, ReadableMap twiMLParams){
     activeCall = Voice.call(getReactApplicationContext(), accessToken, convertToNativeMap(twiMLParams), callListener);
   }
 
