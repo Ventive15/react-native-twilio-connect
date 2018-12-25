@@ -2,7 +2,8 @@
 #import "RNTwilio.h"
 #import "Constant.h"
 #import <React/RCTBridgeModule.h>
-
+#import <AVFoundation/AVFoundation.h>
+#import <React/RCTUIManager.h>
 
 @interface RNTwilio()
 
@@ -47,6 +48,7 @@ RCT_EXPORT_MODULE()
 
 #pragma mark - RegisterCall & Configuration
 
+
 RCT_EXPORT_METHOD(registerWithAccessToken:(nonnull NSString *)accessToken pushToken:(nonnull NSString *)pushDeviceToken){
     [TwilioVoice registerWithAccessToken:accessToken deviceToken:pushDeviceToken completion:^(NSError * _Nullable error) {
         if (error == nil){
@@ -67,10 +69,70 @@ RCT_EXPORT_METHOD(handleNotification:(nonnull NSDictionary *)payload){
     [TwilioVoice handleNotification:payload delegate:self];
 }
 
+
+RCT_EXPORT_METHOD(makeStatusOfMicrophoneTo:(BOOL)isTomute callback:(RCTResponseSenderBlock)callback){
+    if (_call){
+        NSError *error = nil;
+        AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+        if (audioSession.isInputGainSettable) {
+            [audioSession setInputGain:isTomute?0.0:1.0 error:&error];
+            callback(@[error, error?[NSNumber numberWithBool:NO]:[NSNumber numberWithBool:YES]]);
+        }else{
+            callback(@[error, [NSNumber numberWithBool:YES]]);
+        }
+    }else{
+        NSCoder *coder = [[NSCoder alloc] init];
+        [coder encodeObject:@"ObjectNotAllocated" forKey:@"error"];
+        callback(@[[[NSError alloc] initWithCoder:coder]]);
+    }
+}
+
+RCT_EXPORT_METHOD(isMicrophoneMute:(RCTResponseSenderBlock)callback){
+    if (_call){
+        AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+        callback(@[[NSNull null], [NSNumber numberWithBool:audioSession.inputGain == 0.0?YES:NO]]);
+    }else{
+        NSCoder *coder = [[NSCoder alloc] init];
+        [coder encodeObject:@"ObjectNotAllocated" forKey:@"error"];
+        callback(@[[[NSError alloc] initWithCoder:coder]]);
+    }
+}
+
+RCT_EXPORT_METHOD(makeSpeakerStatusTo:(BOOL)isON callback:(RCTResponseSenderBlock)callback){
+    if (_call){
+        NSError *error;
+        AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+        BOOL success = [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord
+                                           error:&error];
+        if (!success) {
+            callback(@[error]);
+        }
+        success = [audioSession overrideOutputAudioPort:isON? AVAudioSessionPortOverrideSpeaker : AVAudioSessionPortOverrideNone error:&error];
+        callback(@[error,[NSNumber numberWithBool:isON]]);
+    }else{
+        NSCoder *coder = [[NSCoder alloc] init];
+        [coder encodeObject:@"ObjectNotAllocated" forKey:@"error"];
+        callback(@[[[NSError alloc] initWithCoder:coder]]);
+    }
+}
+
+RCT_EXPORT_METHOD(isSpeakerOn:(RCTResponseSenderBlock)callback){
+    if (_call){
+        AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+        BOOL isOn = audioSession.outputDataSource.location == AVAudioSessionPortBuiltInSpeaker ? YES : NO;
+        callback(@[[NSNull null], [NSNumber numberWithBool:isOn]]);
+    }else{
+        NSCoder *coder = [[NSCoder alloc] init];
+        [coder encodeObject:@"ObjectNotAllocated" forKey:@"error"];
+        callback(@[[[NSError alloc] initWithCoder:coder]]);
+    }
+}
+
 #pragma mark - Making Outgoing Calls
 
 RCT_EXPORT_METHOD(call:(nonnull NSString *)accessToken params:(NSDictionary *)callParams){
-    _call = [TwilioVoice call:accessToken params:callParams uuid:[NSUUID UUID] delegate:self];    
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayAndRecord error:nil];
+    _call = [TwilioVoice call:accessToken params:callParams uuid:[NSUUID UUID] delegate:self];
 }
 
 #pragma mark - CallKitIntegration Methods

@@ -158,6 +158,42 @@ public class RNTwilioModule extends ReactContextBaseJavaModule{
     disconnect();
   }
 
+  @ReactMethod
+  public void makeStatusOfMicrophoneTo(Boolean isTomute, Callback callback){
+    AudioManager audioManager;
+    Context context = reactContext.getBaseContext();
+    audioManager = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
+    audioManager.setMode(AudioManager.MODE_IN_CALL);
+    audioManager.setMicrophoneMute(isTomute);
+    callback.invoke(null,true);
+  }
+
+  @ReactMethod
+  public void isMicrophoneMute(Callback callback){
+    Context context = reactContext.getBaseContext();
+    audioManager = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
+    audioManager.setMode(AudioManager.MODE_IN_CALL);
+    callback.invoke(null,audioManager.isMicrophoneMute());
+  }
+
+  @ReactMethod
+  public void makeSpeakerStatusTo(Boolean isON, Callback callback){
+    AudioManager audioManager;
+    Context context = reactContext.getBaseContext();
+    audioManager = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
+    audioManager.setMode(AudioManager.MODE_IN_CALL);
+    audioManager.setSpeakerphoneOn(isON);
+    callback.invoke(null,true);
+  }
+
+  @ReactMethod
+  public void isSpeakerOn(Callback callback){
+    AudioManager audioManager;
+    Context context = reactContext.getBaseContext();
+    audioManager = (AudioManager)context.getSystemService(Context.AUDIO_SERVICE);
+    callback.invoke(null,audioManager.isSpeakerphoneOn());
+  }
+
   //Method for Android function of twilio
 
   private Map<String, String> convertToNativeMap(ReadableMap readableMap) {
@@ -472,7 +508,7 @@ public class RNTwilioModule extends ReactContextBaseJavaModule{
       if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
         //Permission denied //TODO
       } else {
-       // retrieveAccessToken();
+        // retrieveAccessToken();
       }
     }
   }
