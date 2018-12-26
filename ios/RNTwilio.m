@@ -73,28 +73,28 @@ RCT_EXPORT_METHOD(handleNotification:(nonnull NSDictionary *)payload){
 RCT_EXPORT_METHOD(makeStatusOfMicrophoneTo:(BOOL)isTomute callback:(RCTResponseSenderBlock)callback){
     if (_call){
         NSError *error = nil;
+        [_call setMuted:isTomute];
         AVAudioSession *audioSession = [AVAudioSession sharedInstance];
         if (audioSession.isInputGainSettable) {
             [audioSession setInputGain:isTomute?0.0:1.0 error:&error];
-            callback(@[error, error?[NSNumber numberWithBool:NO]:[NSNumber numberWithBool:YES]]);
+            if(error != nil){
+                callback(@[error, [NSNumber numberWithBool:NO]]);
+            }else{
+                callback(@[[NSNull null], [NSNumber numberWithBool:YES]]);
+            }
         }else{
-            callback(@[error, [NSNumber numberWithBool:YES]]);
+            callback(@[[[NSError alloc] init]]);
         }
     }else{
-        NSCoder *coder = [[NSCoder alloc] init];
-        [coder encodeObject:@"ObjectNotAllocated" forKey:@"error"];
-        callback(@[[[NSError alloc] initWithCoder:coder]]);
+        callback(@[[[NSError alloc] init]]);
     }
 }
 
 RCT_EXPORT_METHOD(isMicrophoneMute:(RCTResponseSenderBlock)callback){
     if (_call){
-        AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-        callback(@[[NSNull null], [NSNumber numberWithBool:audioSession.inputGain == 0.0?YES:NO]]);
+        callback(@[[NSNull null], [NSNumber numberWithBool:[_call isMuted]]]);
     }else{
-        NSCoder *coder = [[NSCoder alloc] init];
-        [coder encodeObject:@"ObjectNotAllocated" forKey:@"error"];
-        callback(@[[[NSError alloc] initWithCoder:coder]]);
+        callback(@[[[NSError alloc] init]]);
     }
 }
 
@@ -102,17 +102,24 @@ RCT_EXPORT_METHOD(makeSpeakerStatusTo:(BOOL)isON callback:(RCTResponseSenderBloc
     if (_call){
         NSError *error;
         AVAudioSession *audioSession = [AVAudioSession sharedInstance];
-        BOOL success = [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord
-                                           error:&error];
-        if (!success) {
-            callback(@[error]);
+        //        BOOL success = [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord
+        //                                 error:&error];
+        //        if (!success) {
+        //            callback(@[error]);
+        //        }
+        BOOL success = NO;
+        if (isON) {
+            [audioSession overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:&error];
+        }else{
+            [audioSession overrideOutputAudioPort:AVAudioSessionPortOverrideNone error:&error];
         }
-        success = [audioSession overrideOutputAudioPort:isON? AVAudioSessionPortOverrideSpeaker : AVAudioSessionPortOverrideNone error:&error];
-        callback(@[error,[NSNumber numberWithBool:isON]]);
+        if(error != nil){
+            callback(@[error,[NSNumber numberWithBool:success]]);
+        }else{
+            callback(@[[NSNull null],[NSNumber numberWithBool:success]]);
+        }
     }else{
-        NSCoder *coder = [[NSCoder alloc] init];
-        [coder encodeObject:@"ObjectNotAllocated" forKey:@"error"];
-        callback(@[[[NSError alloc] initWithCoder:coder]]);
+        callback(@[[[NSError alloc] init]]);
     }
 }
 
@@ -122,9 +129,7 @@ RCT_EXPORT_METHOD(isSpeakerOn:(RCTResponseSenderBlock)callback){
         BOOL isOn = audioSession.outputDataSource.location == AVAudioSessionPortBuiltInSpeaker ? YES : NO;
         callback(@[[NSNull null], [NSNumber numberWithBool:isOn]]);
     }else{
-        NSCoder *coder = [[NSCoder alloc] init];
-        [coder encodeObject:@"ObjectNotAllocated" forKey:@"error"];
-        callback(@[[[NSError alloc] initWithCoder:coder]]);
+        callback(@[[[NSError alloc] init]]);
     }
 }
 
